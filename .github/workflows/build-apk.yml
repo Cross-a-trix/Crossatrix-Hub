@@ -1,0 +1,60 @@
+name: Build Android APK from APP.zip
+
+on:
+  push:
+    paths:
+      - 'APP.zip'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Extract APP.zip
+        run: |
+          mkdir -p extracted_app
+          unzip -q APP.zip -d extracted_app
+
+      - name: Grant Execute Permission for Gradlew
+        run: |
+          # Find and make gradlew executable inside the extracted folder
+          find extracted_app -name "gradlew" -exec chmod +x {} \;
+
+      - name: Build APKs (Debug & Release)
+        run: |
+          # Locate gradlew dynamically within the extracted files
+          GRADLEW_PATH=$(find extracted_app -name "gradlew" | head -n 1)
+          
+          if [ -z "$GRADLEW_PATH" ]; then
+            echo "Error: gradlew not found inside APP.zip!"
+            exit 1
+          fi
+          
+          PROJECT_DIR=$(dirname "$GRADLEW_PATH")
+          echo "Found project directory at: $PROJECT_DIR"
+          
+          cd "$PROJECT_DIR"
+          # Compile both variants in one go
+          ./gradlew assembleDebug assembleRelease
+
+      - name: Upload APK Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apks
+          path: |
+            **/build/outputs/apk/debug/*.apk
+            **/build/outputs/apk/rele
+            ase/*.apk
