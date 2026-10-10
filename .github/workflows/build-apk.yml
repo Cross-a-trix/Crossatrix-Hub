@@ -29,7 +29,7 @@ jobs:
           unzip -q APP.zip -d extracted_app
 
       - name: Build APKs (Debug & Release)
-         run: |
+        run: |
            # Find the directory containing the Android project files
            PROJECT_FILE=$(find extracted_app \( -name "settings.gradle*" -o -name "build.gradle*" \) | head -n 1)
 
