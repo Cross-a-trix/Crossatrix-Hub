@@ -21,7 +21,7 @@ jobs:
           java-version: '17'
 
       - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Extract APP.zip
         run: |
@@ -30,12 +30,10 @@ jobs:
 
       - name: Grant Execute Permission for Gradlew
         run: |
-          # Find and make gradlew executable inside the extracted folder
           find extracted_app -name "gradlew" -exec chmod +x {} \;
 
       - name: Build APKs (Debug & Release)
         run: |
-          # Locate gradlew dynamically within the extracted files
           GRADLEW_PATH=$(find extracted_app -name "gradlew" | head -n 1)
           
           if [ -z "$GRADLEW_PATH" ]; then
@@ -47,7 +45,6 @@ jobs:
           echo "Found project directory at: $PROJECT_DIR"
           
           cd "$PROJECT_DIR"
-          # Compile both variants in one go
           ./gradlew assembleDebug assembleRelease
 
       - name: Upload APK Artifacts
@@ -56,5 +53,5 @@ jobs:
           name: android-apks
           path: |
             **/build/outputs/apk/debug/*.apk
-            **/build/outputs/apk/rele
-            ase/*.apk
+            **/build/outputs/apk/relea
+            se/*.apk
