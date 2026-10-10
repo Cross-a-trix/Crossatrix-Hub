@@ -28,38 +28,38 @@ jobs:
           mkdir -p extracted_app
           unzip -q APP.zip -d extracted_app
 
-      - name: Build APKs (Debug & Release)
-        run: |
-          # Find the directory containing the Android project files
-          PROJECT_FILE=$(find extracted_app \( -name "settings.gradle*" -o -name "build.gradle*" \) | head -n 1)
+       - name: Build APKs (Debug & Release)
+         run: |
+           # Find the directory containing the Android project files
+           PROJECT_FILE=$(find extracted_app \( -name "settings.gradle*" -o -name "build.gradle*" \) | head -n 1)
 
-          if [ -z "$PROJECT_FILE" ]; then
-            echo "Error: No Android project files found inside APP.zip!"
-            echo "Top-level extracted_app contents:"
-            find extracted_app -maxdepth 3 -type f | head -n 50
-            exit 1
-          fi
+           if [ -z "$PROJECT_FILE" ]; then
+             echo "Error: No Android project files found inside APP.zip!"
+             echo "Top-level extracted_app contents:"
+             find extracted_app -maxdepth 3 -type f | head -n 50
+             exit 1
+           fi
 
-          PROJECT_DIR=$(dirname "$PROJECT_FILE")
-          echo "Found project directory at: $PROJECT_DIR"
-          cd "$PROJECT_DIR"
+           PROJECT_DIR=$(dirname "$PROJECT_FILE")
+           echo "Found project directory at: $PROJECT_DIR"
+           cd "$PROJECT_DIR"
 
-          # If gradlew doesn't exist, download Gradle and generate the wrapper automatically
-          if [ ! -f "gradlew" ]; then
-            echo "gradlew not found. Generating wrapper..."
-            # Download Gradle 8.5 (compatible with modern Android projects)
-            wget -q https://services.gradle.org/distributions/gradle-8.5-bin.zip
-            unzip -q gradle-8.5-bin.zip
-            export PATH="$PWD/gradle-8.5/bin:$PATH"
+           # If gradlew doesn't exist, download Gradle and generate the wrapper automatically
+           if [ ! -f "gradlew" ]; then
+             echo "gradlew not found. Generating wrapper..."
+             # Download Gradle 8.9 (compatible with modern Android projects)
+             wget -q https://services.gradle.org/distributions/gradle-8.9-bin.zip
+             unzip -q gradle-8.9-bin.zip
+             export PATH="$PWD/gradle-8.9/bin:$PATH"
 
-            # Generate the wrapper files
-            gradle wrapper --gradle-version 8.5
-          fi
+             # Generate the wrapper files
+             gradle wrapper --gradle-version 8.9
+           fi
 
-          chmod +x gradlew
+           chmod +x gradlew
 
-          # Compile both variants
-          ./gradlew assembleDebug assembleRelease
+           # Compile both variants
+           ./gradlew assembleDebug assembleRelease
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
