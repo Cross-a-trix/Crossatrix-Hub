@@ -22,6 +22,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
+        with:
+          packages: 'build-tools;35.0.0'
 
       - name: Extract APP.zip
         run: |
@@ -60,6 +62,44 @@ jobs:
 
            # Compile both variants
            ./gradlew assembleDebug assembleRelease
+
+      - name: Sign Release APKs
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          : "${ANDROID_KEYSTORE_BASE64:?Add the ANDROID_KEYSTORE_BASE64 repository secret}"
+          : "${ANDROID_KEY_ALIAS:?Add the ANDROID_KEY_ALIAS repository secret}"
+          : "${ANDROID_KEYSTORE_PASSWORD:?Add the ANDROID_KEYSTORE_PASSWORD repository secret}"
+          : "${ANDROID_KEY_PASSWORD:?Add the ANDROID_KEY_PASSWORD repository secret}"
+
+          keystore="$RUNNER_TEMP/release-keystore.jks"
+          trap 'rm -f "$keystore"' EXIT
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+
+          shopt -s globstar nullglob
+          apks=(extracted_app/**/build/outputs/apk/release/*.apk)
+          if [ ${#apks[@]} -eq 0 ]; then
+            echo "Error: No release APKs found to sign."
+            exit 1
+          fi
+
+          apksigner="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          for apk in "${apks[@]}"; do
+            signed_apk="${apk%.apk}-signed.apk"
+            "$apksigner" sign \
+              --ks "$keystore" \
+              --ks-key-alias "$ANDROID_KEY_ALIAS" \
+              --ks-pass env:ANDROID_KEYSTORE_PASSWORD \
+              --key-pass env:ANDROID_KEY_PASSWORD \
+              --out "$signed_apk" \
+              "$apk"
+            "$apksigner" verify "$signed_apk"
+            mv "$signed_apk" "$apk"
+          done
 
       - name: Upload APK Artifacts
         uses: actions/upload-artifact@v4
