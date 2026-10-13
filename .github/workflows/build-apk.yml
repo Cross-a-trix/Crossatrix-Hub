@@ -1,4 +1,4 @@
-name: Build Android APK from APP.zip
+name: Build and Sign Android Release APK
 
 on:
   push:
@@ -30,7 +30,7 @@ jobs:
           mkdir -p extracted_app
           unzip -q APP.zip -d extracted_app
 
-      - name: Build APKs (Debug & Release)
+      - name: Build Release APK
         run: |
            # Find the directory containing the Android project files
            PROJECT_FILE=$(find extracted_app \( -name "settings.gradle*" -o -name "build.gradle*" \) | head -n 1)
@@ -60,8 +60,7 @@ jobs:
 
            chmod +x gradlew
 
-           # Compile both variants
-           ./gradlew assembleDebug assembleRelease
+           ./gradlew assembleRelease
 
       - name: Sign Release APKs
         env:
@@ -88,8 +87,15 @@ jobs:
           fi
 
           apksigner="$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          mkdir -p release-artifact
           for apk in "${apks[@]}"; do
-            signed_apk="${apk%.apk}-signed.apk"
+            relative_path="${apk#extracted_app/}"
+            artifact_name="${relative_path//\//-}"
+            signed_apk="release-artifact/$artifact_name"
+            if [ -e "$signed_apk" ]; then
+              echo "Error: Multiple release APKs map to the same artifact name: $artifact_name"
+              exit 1
+            fi
             "$apksigner" sign \
               --ks "$keystore" \
               --ks-key-alias "$ANDROID_KEY_ALIAS" \
@@ -98,13 +104,10 @@ jobs:
               --out "$signed_apk" \
               "$apk"
             "$apksigner" verify "$signed_apk"
-            mv "$signed_apk" "$apk"
           done
 
-      - name: Upload APK Artifacts
+      - name: Upload Signed Release APKs
         uses: actions/upload-artifact@v4
         with:
-          name: android-apks
-          path: |
-            **/build/outputs/apk/debug/*.apk
-            **/build/outputs/apk/release/*.apk
+          name: android-release-apks
+          path: release-artifact/*.apk
